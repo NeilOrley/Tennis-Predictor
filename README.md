@@ -1,89 +1,83 @@
+
 # 🎾 Tennis Match Predictor
 
-Ce projet utilise des modèles de machine learning pour prédire l'issue d'un match de tennis professionnel (ATP) à partir de statistiques, de cotes, de confrontations passées (H2H), et de la forme récente des joueurs.
+Un projet complet de machine learning pour prédire l'issue de matchs de tennis professionnels (ATP, ITF...).
 
 ---
 
-## 📦 Contenu
+## 📁 Structure du projet
 
-- `features.py` – Calcul des features, H2H, forme récente
-- `train.py` – Pipeline d'entraînement et calibration (isotonic/sigmoid)
-- `predict.py` – Fonction pour prédire à partir d'un input enrichi
-- `main.py` – Script principal pour entraîner et sauvegarder un modèle
-- `create_h2h_form_dicts.py` – Génère les dictionnaires H2H et forme récente
-- `predict_cli.py` – Interface ligne de commande pour prédire un match
-- `playground.ipynb` – Notebook interactif d'exemple
-- `models/` – Contiendra les fichiers `.pkl` générés (modèles et dictionnaires)
-- `data/` – Doit contenir les fichiers CSV `atp_tennis.csv` et `matches_atp_5_dernieres_années.csv`
+### `fetch_data.py`
+- Récupère automatiquement les matchs du jour et les classements depuis Flashscore.
+- Génère un fichier `matches_YYYY-MM-DD.csv` dans le dossier `data/`.
+
+### `training.py`
+- Entraîne deux modèles :
+  - `model_with_odds.pkl` : avec les cotes des joueurs si disponibles.
+  - `model_without_odds.pkl` : sans les cotes.
+- Exclut désormais les colonnes `Series` et `Best of` pour plus de robustesse.
+- Sauvegarde les modèles dans le dossier `models/`.
+
+### `preprocessing.py`
+- Contient les fonctions de traitement des données :
+  - Enrichissement des features (`H2H`, forme récente, etc.).
+  - Chargement des dictionnaires `h2h_dict.pkl` et `recent_form_dict.pkl`.
+
+### `predict_today_matches.py`
+- Charge automatiquement les matchs du jour (`data/matches_YYYY-MM-DD.csv`)
+- Applique le modèle adapté (`with_odds` ou `without_odds`)
+- Produit un fichier `predictions_YYYY-MM-DD.csv` avec :
+  - Joueurs
+  - Probabilité de victoire (`Proba_Player1`)
+  - Gagnant prédit (`Predicted_Winner`)
+  - Indice de confiance (`Confidence`)
+- Affiche également chaque prédiction en console.
 
 ---
 
-## 🚀 Installation
+## 🧠 Comprendre `Proba` vs `Confiance`
+
+| Champ            | Définition                                                                 |
+|------------------|---------------------------------------------------------------------------|
+| `Proba_Player1`  | Probabilité estimée que `Player_1` gagne. Ex : 72%                        |
+| `Confidence`     | Indice de certitude du modèle. Calcule : `|proba - 0.5| * 200`            |
+|                  | Plus la proba est proche de 0% ou 100%, plus la confiance est élevée.     |
+
+### Exemple :
+
+| Proba_Player1 | Gagnant prédit | Confiance |
+|---------------|----------------|-----------|
+| 0.50          | -              | 0%        |
+| 0.75          | Player_1       | 50%       |
+| 0.95          | Player_1       | 90%       |
+| 0.10          | Player_2       | 80%       |
+
+---
+
+## 🚀 Lancer les prédictions
 
 ```bash
-git clone https://github.com/votre-nom/tennis-predictor.git
-cd Tennis-Predictor
-pip install -r requirements.txt
+python fetch_data.py
+python training.py
+python predict_today_matches.py
 ```
 
 ---
 
-## 🔧 Préparation
+## 📦 Dossiers attendus
 
-1. Place tes fichiers CSV dans `./data` :
-   - `atp_tennis.csv` – Historique complet ATP
-   - `matches_atp_5_dernieres_années.csv` – Données d’entraînement
-
-2. Génère les dictionnaires H2H et forme récente :
-```bash
-python create_h2h_form_dicts.py
-```
-
-3. Entraîne et sauvegarde le modèle :
-```bash
-python main.py
-```
+- `data/` → données brutes (matchs, classements)
+- `models/` → modèles entraînés
+- `predictions/` → prédictions quotidiennes
 
 ---
 
-## 🧠 Prédire un match (CLI)
-
-```bash
-python predict_cli.py --p1 "Djokovic N." --p2 "Alcaraz C." --rank1 1 --rank2 2 \
---pts1 9000 --pts2 8500 --odd1 1.9 --odd2 2.1 --surface "Hard" --court "Outdoor"
-```
-
----
-
-## 🧪 Exemple interactif
-
-Ouvre `playground.ipynb` pour tester en notebook.
-
----
-
-## 📁 Exemple d’organisation
-
-```
-tennis-predictor/
-├── data/
-│   ├── atp_tennis.csv
-│   └── matches_atp_5_dernieres_années.csv
-├── models/
-│   ├── tennis_win_predictor.pkl
-│   ├── h2h_dict.pkl
-│   └── recent_form_dict.pkl
-├── features.py
-├── train.py
-├── predict.py
-├── main.py
-├── predict_cli.py
-├── create_h2h_form_dicts.py
-├── playground.ipynb
-└── README.md
-```
-
----
-
-## 📌 Auteurs
-
-Développé avec ❤️ par [votre nom] – basé sur les travaux du papier ["Machine Learning Techniques for Predicting Tennis Match Outcomes"](https://arxiv.org/pdf/1701.08055).
+## ✅ TODO
+- [ ] Entraîner un modèle qui n'utilise pas les features "Score", "Total_Games" et "Games_Class" pour la prédiction des matchs à venir
+- [ ] Ajouter les features avancées sur les derniers
+- [ ] Améliorer la logique business (mise, bankroll, ROI, etc.)
+- [ ] Intégrer la prédiction du nombre total de jeux
+- [ ] Intégrer la prédiction du vainqueur du 1er set
+- [ ] Ajouter des prédictions combinées
+- [ ] Ajouter une interface Streamlit
+- [ ] Intégration continue avec tests unitaires

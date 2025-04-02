@@ -1,6 +1,0 @@
-joblib==1.2.0
-matplotlib==3.5.1
-optuna==4.2.1
-pandas==2.0.3
-scikit-learn==1.6.1
-xgboost

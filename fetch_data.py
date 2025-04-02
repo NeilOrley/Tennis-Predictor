@@ -1,3 +1,5 @@
+# --- From fetch_matches_today.py ---
+
 import requests
 import os
 import pandas as pd
@@ -112,6 +114,15 @@ def fetch_flashscore_matches(save_dir="data", force_reload=False):
                     "Date": today,
                 }
 
+                row["EVENT_ID"] = match.get("EVENT_ID")
+                if row["EVENT_ID"]:
+                    odd1, odd2 = fetch_odds_for_event(row["EVENT_ID"])
+                    row["Odd_1"] = odd1
+                    row["Odd_2"] = odd2
+                else:
+                    row["Odd_1"] = None
+                    row["Odd_2"] = None
+
                 # Ajout des rankings si disponibles
                 rank_p1 = rankings_df.loc[rankings_df["Player_ID"] == id_p1]
                 rank_p2 = rankings_df.loc[rankings_df["Player_ID"] == id_p2]
@@ -133,6 +144,49 @@ def fetch_flashscore_matches(save_dir="data", force_reload=False):
     return df
 
 
+def fetch_odds_for_event(event_id):
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json",
+        "x-rapidapi-key": "f4ba8f88b9msh4cda0a37a7df344p16b553jsn382473e118a4",
+        "x-rapidapi-host": "flashlive-sports.p.rapidapi.com"
+    }
+
+    url = f"https://flashlive-sports.p.rapidapi.com/v1/events/odds?event_id={event_id}&locale=en_INT"
+
+    try:
+        response = requests.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        data = response.json()
+
+        all_odds_1 = []
+        all_odds_2 = []
+
+        for block in data.get("DATA", []):
+            if block.get("BETTING_TYPE") == "*Home/Away":
+                for period in block.get("PERIODS", []):
+                    if period.get("ODDS_STAGE") == "*Match":
+                        for group in period.get("GROUPS", []):
+                            for market in group.get("MARKETS", []):
+                                odd1 = float(market.get("ODD_CELL_SECOND", {}).get("VALUE", 0))
+                                odd2 = float(market.get("ODD_CELL_THIRD", {}).get("VALUE", 0))
+                                if odd1 > 0:
+                                    all_odds_1.append(odd1)
+                                if odd2 > 0:
+                                    all_odds_2.append(odd2)
+
+        if all_odds_1 and all_odds_2:
+            return max(all_odds_1), max(all_odds_2)
+    except Exception as e:
+        print(f"[⚠️] Erreur cotes pour event {event_id}: {e}")
+
+    return None, None
+
+
 if __name__ == "__main__":
-    df_matches = fetch_flashscore_matches(force_reload=True)
+    df_matches = fetch_flashscore_matches()
     print(df_matches.head())
